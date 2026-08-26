@@ -1,4 +1,5 @@
-export const SCHEMA_VERSION = 1;
+export const DANMUX_STANDARD_VERSION = 1;
+export const SCHEMA_VERSION = DANMUX_STANDARD_VERSION;
 export const EXTENSION_VERSION = 1;
 
 export const MODES = Object.freeze([

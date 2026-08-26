@@ -1,6 +1,6 @@
 # DanmuX v1
 
-DanmuX v1 是一个平台无关的弹幕数据标准参考实现。它把平台原始弹幕归一化为 `Base + Effects + Source`，并将 DanDanPlay 保留为兼容输出，而不是内部核心模型。
+DanmuX 是一个平台无关的弹幕数据标准参考实现，当前仓库定义并实现标准 v1。它把平台原始弹幕归一化为 `Base + Effects + Source`，并将 DanDanPlay 保留为兼容输出，而不是内部核心模型。
 
 当前实现覆盖审批修订版任务书要求的标准骨架：双层版本、Base 校验、`gradient`（`texture` / `linear`）、B 站原生渐变适配、普通弹幕人工渐变、DanDanPlay fallback、Enhanced Extension、未知效果隔离、聚合幂等、Asset Resolver 安全边界、能力协商、结构化诊断和测试。v0.2 起吸收 `xlmc/danmu_api` 实际链路经验，兼容其四字段 JSON 与 Bilibili 8/9 字段 XML，并直接接受 protobuf parser 的 `progress/mode/fontsize/color_v2` 字段。
 
@@ -21,7 +21,7 @@ import {
   fromBilibili,
   applyGradient,
   toCompatibilityWire,
-} from 'danmux-v1';
+} from 'danmux';
 
 const ordinary = createDanmuX({
   id: 't-1',

@@ -17,6 +17,7 @@ export interface DanDanPlayComment { p: string; m: string; lossReport?: Diagnost
 export interface GradientConfig { target?: GradientTarget; angle?: number; stops?: GradientStop[]; force?: boolean; }
 
 export const SCHEMA_VERSION: 1;
+export const DANMUX_STANDARD_VERSION: 1;
 export const EXTENSION_VERSION: 1;
 export const DANDANPLAY_WIRE_PROFILES: Readonly<{ JSON: 'ddplay-json'; BILIBILI_XML: 'bilibili-xml'; }>;
 
