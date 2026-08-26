@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "ordinary-1",
+  "time": 12.5,
+  "text": "普通弹幕",
+  "mode": "scroll",
+  "fontSize": 25,
+  "color": 16777215,
+  "source": { "platform": "tencent", "id": "ordinary-1" }
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://danmux.dev/schema/danmux-v1.schema.json",
+  "title": "DanmuX v1 Internal Model",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "time", "text", "mode", "fontSize", "color", "source"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "time": { "type": "number", "minimum": 0 },
+    "text": { "type": "string", "maxLength": 1000 },
+    "mode": { "enum": ["scroll", "top", "bottom", "reverse", "fixed", "advanced"] },
+    "fontSize": { "type": "number", "exclusiveMinimum": 0, "maximum": 256 },
+    "color": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+    "source": {
+      "type": "object", "additionalProperties": false, "required": ["platform", "id"],
+      "properties": { "platform": { "type": "string", "minLength": 1, "maxLength": 64 }, "id": { "type": "string", "minLength": 1, "maxLength": 256 } }
+    },
+    "effects": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/effect" } },
+    "vendor": { "type": "object", "additionalProperties": true }
+  },
+  "$defs": {
+    "effect": {
+      "oneOf": [
+        { "$ref": "#/$defs/gradient" },
+        { "$ref": "#/$defs/vendorEffect" }
+      ]
+    },
+    "gradient": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "target", "source"],
+      "properties": {
+        "type": { "const": "gradient" }, "origin": { "enum": ["native", "generated"] },
+        "target": { "enum": ["fill", "stroke"] },
+        "source": { "oneOf": [{ "$ref": "#/$defs/texture" }, { "$ref": "#/$defs/linear" }] }
+      }
+    },
+    "texture": {
+      "type": "object", "additionalProperties": false, "required": ["type", "uri"],
+      "properties": {
+        "type": { "const": "texture" }, "uri": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "assetId": { "type": "string", "maxLength": 128 }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "mime": { "type": "string", "maxLength": 64 }
+      }
+    },
+    "linear": {
+      "type": "object", "additionalProperties": false, "required": ["type", "angle", "stops"],
+      "properties": {
+        "type": { "const": "linear" }, "angle": { "type": "number", "minimum": -360, "maximum": 360 },
+        "stops": { "type": "array", "minItems": 2, "maxItems": 16, "items": { "$ref": "#/$defs/stop" } }
+      }
+    },
+    "stop": {
+      "type": "object", "additionalProperties": false, "required": ["position", "color"],
+      "properties": { "position": { "type": "number", "minimum": 0, "maximum": 1 }, "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }, "alpha": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 } }
+    },
+    "vendorEffect": {
+      "type": "object", "additionalProperties": false, "required": ["type", "vendor", "name", "data"],
+      "properties": { "type": { "const": "vendor" }, "vendor": { "type": "string", "minLength": 1, "maxLength": 64 }, "name": { "type": "string", "minLength": 1, "maxLength": 128 }, "data": {} }
+    }
+  }
+}

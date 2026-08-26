@@ -1,0 +1,10 @@
+{
+  "p": "12.5,1,25,16777215",
+  "m": "渐变弹幕",
+  "danmux": {
+    "extensionVersion": 1,
+    "effects": [
+      { "type": "gradient", "target": "fill", "origin": "native", "source": { "type": "texture", "uri": "https://cdn.example.test/fill.png" } }
+    ]
+  }
+}

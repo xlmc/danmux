@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "bili-gradient-1",
+  "time": 12.5,
+  "text": "渐变弹幕",
+  "mode": "scroll",
+  "fontSize": 25,
+  "color": 16777215,
+  "effects": [
+    { "type": "gradient", "origin": "native", "target": "fill", "source": { "type": "texture", "uri": "https://cdn.example.test/fill.png" } },
+    { "type": "gradient", "origin": "native", "target": "stroke", "source": { "type": "texture", "uri": "https://cdn.example.test/stroke.png" } }
+  ],
+  "source": { "platform": "bilibili", "id": "bili-gradient-1" }
+}
