@@ -13,7 +13,10 @@ DanmuX 是一个平台无关的弹幕数据标准参考实现，当前仓库定�
 ```bash
 npm test
 npm run check
+npm run demo
 ```
+
+运行 `npm run demo` 后打开 `http://127.0.0.1:4173`，可以编辑原始 Bilibili JSON 和自定义渐变 stops，直观看到弹幕效果、DanmuX 模型、兼容 `p/m` 和诊断结果。调试台直接加载仓库当前源码，不包含任何内置预设。
 
 ```js
 import {

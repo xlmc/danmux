@@ -9,7 +9,8 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "test:watch": "node --test --watch test/*.test.js",
-    "check": "node --check src/index.js && node --test test/*.test.js"
+    "check": "node --check src/index.js && node --test test/*.test.js",
+    "demo": "node demo/server.js"
   },
   "license": "MIT",
   "types": "./types/danmux.d.ts",
