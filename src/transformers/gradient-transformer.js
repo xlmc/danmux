@@ -2,23 +2,9 @@ import { withEffects } from '../danmu.js';
 import { canonicalizeGradientEffect, isNativeGradient, validateGradientEffect } from '../effects/gradient.js';
 import { stableStringify } from '../utils.js';
 
-export const GRADIENT_PRESETS = Object.freeze({
-  bilibili: { angle: 0, stops: [{ position: 0, color: '#FB7299', alpha: 0.85 }, { position: 1, color: '#33B8FF', alpha: 0.85 }] },
-  'pink-blue': { angle: 0, stops: [{ position: 0, color: '#FB7299', alpha: 0.85 }, { position: 1, color: '#33B8FF', alpha: 0.85 }] },
-  'blue-purple': { angle: 0, stops: [{ position: 0, color: '#66CCFF', alpha: 0.85 }, { position: 1, color: '#A780FF', alpha: 0.85 }] },
-  sweet: { angle: 0, stops: [{ position: 0, color: '#FF6B8B', alpha: 0.85 }, { position: 1, color: '#A259FF', alpha: 0.85 }] },
-  cyber: { angle: 0, stops: [{ position: 0, color: '#00FF87', alpha: 0.85 }, { position: 1, color: '#60EFFF', alpha: 0.85 }] },
-  sunset: { angle: 0, stops: [{ position: 0, color: '#FFA726', alpha: 0.85 }, { position: 1, color: '#FF5252', alpha: 0.85 }] },
-  ocean: { angle: 0, stops: [{ position: 0, color: '#2E3192', alpha: 0.85 }, { position: 1, color: '#1BFFFF', alpha: 0.85 }] },
-  mint: { angle: 0, stops: [{ position: 0, color: '#43E97B', alpha: 0.85 }, { position: 1, color: '#38F9D7', alpha: 0.85 }] },
-  rainbow: { angle: 0, stops: [{ position: 0, color: '#FF0000', alpha: 0.85 }, { position: 0.17, color: '#FFA500', alpha: 0.85 }, { position: 0.33, color: '#FFFF00', alpha: 0.85 }, { position: 0.5, color: '#00FF00', alpha: 0.85 }, { position: 0.67, color: '#00FFFF', alpha: 0.85 }, { position: 0.83, color: '#0000FF', alpha: 0.85 }, { position: 1, color: '#8000FF', alpha: 0.85 }] },
-});
-
 function resolveSource(config) {
-  if (config?.stops) return { type: 'linear', angle: config.angle ?? 0, stops: config.stops };
-  const preset = GRADIENT_PRESETS[config?.preset ?? 'pink-blue'];
-  if (!preset) throw new Error(`Unknown gradient preset: ${config?.preset}`);
-  return { type: 'linear', angle: config.angle ?? preset.angle, stops: structuredClone(config.stops ?? preset.stops) };
+  if (!Array.isArray(config?.stops)) throw new Error('gradient stops are required');
+  return { type: 'linear', angle: config.angle ?? 0, stops: structuredClone(config.stops) };
 }
 
 export function applyGradient(item, config = {}) {
@@ -37,7 +23,7 @@ export function applyGradient(item, config = {}) {
   const effects = existing.filter((effect) => !(effect.type === 'gradient' && effect.target === gradient.target && (config.force || effect.origin === 'generated')));
   const result = withEffects(item, [...effects, gradient]);
   if (!result.ok) return { ...result, value: item, generated: false };
-  return { ...result, generated: true, variantKey: `${config.preset ?? 'custom'}:${stableStringify(gradient.source)}` };
+  return { ...result, generated: true, variantKey: `custom:${stableStringify(gradient.source)}` };
 }
 
 export function transformBatch(items, config = {}) {

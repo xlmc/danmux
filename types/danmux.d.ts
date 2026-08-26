@@ -14,11 +14,10 @@ export interface Diagnostic { code: string; message?: string; path?: string; [ke
 export interface Result<T> { ok: boolean; value?: T; diagnostics: Diagnostic[]; }
 export type WireProfile = 'ddplay-json' | 'bilibili-xml';
 export interface DanDanPlayComment { p: string; m: string; lossReport?: Diagnostic[]; }
-export interface GradientConfig { preset?: string; target?: GradientTarget; angle?: number; stops?: GradientStop[]; force?: boolean; }
+export interface GradientConfig { target?: GradientTarget; angle?: number; stops?: GradientStop[]; force?: boolean; }
 
 export const SCHEMA_VERSION: 1;
 export const EXTENSION_VERSION: 1;
-export const GRADIENT_PRESETS: Readonly<Record<string, { angle: number; stops: GradientStop[] }>>;
 export const DANDANPLAY_WIRE_PROFILES: Readonly<{ JSON: 'ddplay-json'; BILIBILI_XML: 'bilibili-xml'; }>;
 
 export function validateBase(input: unknown): Result<DanmuX>;

@@ -33,7 +33,13 @@ const ordinary = createDanmuX({
   source: { platform: 'tencent', id: 't-1' },
 });
 
-const enhanced = applyGradient(ordinary.value, { preset: 'pink-blue' }).value;
+const enhanced = applyGradient(ordinary.value, {
+  angle: 0,
+  stops: [
+    { position: 0, color: '#FB7299', alpha: 0.85 },
+    { position: 1, color: '#33B8FF', alpha: 0.85 },
+  ],
+}).value;
 const wire = toCompatibilityWire(enhanced);
 // wire.p / wire.m 保持 DanDanPlay Base；wire.danmux.effects 是可选增强层。
 ```
@@ -102,9 +108,9 @@ toDanDanPlay(item, { profile: 'bilibili-xml' }); // 12.5,1,25,16777215,0,0,0,id
 
 ## 适配与转换
 
-`fromBilibili()` 会把 B 站 `color_v2` / `colorfulSrc` 的填充或描边纹理映射为 `origin=native` 的 gradient，并把 protobuf 的毫秒 `progress`、数字 mode 和 `fontsize` 规范化到 Base；格式异常时保留 Base，并生成 namespaced `vendor=bilibili` fallback。`applyGradient()` 只生成 `origin=generated` 的 linear gradient，preset 只是生成器配置，不会进入协议核心。内置 `bilibili`、`sweet`、`cyber`、`sunset`、`ocean`、`mint`、`rainbow` 等皮肤，原生效果优先于同 target 的 generated 效果。
+`fromBilibili()` 会把 B 站 `color_v2` / `colorfulSrc` 的填充或描边纹理映射为 `origin=native` 的 gradient，并把 protobuf 的毫秒 `progress`、数字 mode 和 `fontsize` 规范化到 Base；格式异常时保留 Base，并生成 namespaced `vendor=bilibili` fallback。`applyGradient()` 只接受调用方明确提供的 `angle` 与 `stops`，生成 `origin=generated` 的 linear gradient，不内置颜色规则；原生效果优先于同 target 的 generated 效果。
 
-`aggregate()` 按 `source.platform + source.id + id` 去重，并在冲突时保留 native gradient。Transformer 是纯函数、可重复执行的；generated preset 不会覆盖 native effect。
+`aggregate()` 按 `source.platform + source.id + id` 去重，并在冲突时保留 native gradient。Transformer 是纯函数、可重复执行的；generated effect 不会覆盖 native effect。
 
 ## 资源安全
 
@@ -122,7 +128,7 @@ src/
   effects/gradient.js            Gradient Schema 规则与规范化
   adapters/bilibili-danmu.js     B 站原始字段 → DanmuX
   adapters/dandanplay.js         DanmuX ↔ DanDanPlay / Enhanced Wire
-  transformers/gradient-presets.js  generated linear gradient
+  transformers/gradient-transformer.js  caller-defined linear gradient
   pipeline/aggregate.js          去重、合并、native 优先
   assets/resolver.js             资源协议、MIME、大小、超时和 hash 安全
   capabilities.js                Level 0/1 细粒度能力协商

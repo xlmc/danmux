@@ -3,7 +3,7 @@ export * from './danmu.js';
 export * from './effects/gradient.js';
 export * from './adapters/bilibili-danmu.js';
 export * from './adapters/dandanplay.js';
-export * from './transformers/gradient-presets.js';
+export * from './transformers/gradient-transformer.js';
 export * from './pipeline/aggregate.js';
 export * from './assets/resolver.js';
 export * from './capabilities.js';

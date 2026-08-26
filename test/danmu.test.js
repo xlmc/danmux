@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDanmuX, validateBase, stableIdentity } from '../src/danmu.js';
-import { applyGradient, transformBatch } from '../src/transformers/gradient-presets.js';
+import { applyGradient, transformBatch } from '../src/transformers/gradient-transformer.js';
 import { fromBilibili } from '../src/adapters/bilibili-danmu.js';
 import { fromCompatibilityWire, toCompatibilityWire, toDanDanPlay, toEnhanced } from '../src/adapters/dandanplay.js';
 import { aggregate } from '../src/pipeline/aggregate.js';
@@ -14,6 +14,14 @@ const publicDns = async () => [{ address: '203.0.113.10', family: 4 }];
 function base(overrides = {}) {
   return createDanmuX({ id: '1', time: 1, text: 'hello', mode: 'scroll', fontSize: 25, color: 0xffffff, source: { platform: 'test', id: 'source-1' }, ...overrides });
 }
+
+const customGradient = {
+  angle: 0,
+  stops: [
+    { position: 0, color: '#FB7299', alpha: 0.85 },
+    { position: 1, color: '#33B8FF', alpha: 0.85 },
+  ],
+};
 
 test('ordinary DanmuX is sparse and has no empty effects', () => {
   const result = base({ effects: [] });
@@ -65,24 +73,27 @@ test('malformed Bilibili gradient keeps Base and stores vendor fallback', () => 
   assert.equal(result.diagnostics[0].code, 'texture_uri_scheme');
 });
 
-test('generated preset is idempotent and does not replace native gradient', () => {
+test('generated custom gradient is idempotent and does not replace native gradient', () => {
   const ordinary = base();
-  const first = applyGradient(ordinary.value, { preset: 'pink-blue' });
-  const second = applyGradient(first.value, { preset: 'pink-blue' });
+  const first = applyGradient(ordinary.value, customGradient);
+  const second = applyGradient(first.value, customGradient);
   assert.equal(second.value.effects.length, 1);
   assert.equal(second.value.effects[0].origin, 'generated');
   const native = base({ effects: [{ type: 'gradient', origin: 'native', target: 'fill', source: { type: 'texture', uri: 'https://cdn.example.test/a.png' } }] });
-  const preserved = applyGradient(native.value, { preset: 'rainbow' });
+  const preserved = applyGradient(native.value, customGradient);
   assert.equal(preserved.generated, false);
   assert.equal(preserved.value.effects[0].origin, 'native');
-  assert.equal(transformBatch([ordinary.value], { preset: 'blue-purple' }).items[0].effects.length, 1);
-  const failedBatch = transformBatch([ordinary.value, ordinary.value], { preset: 'missing' });
+  assert.equal(transformBatch([ordinary.value], customGradient).items[0].effects.length, 1);
+  const failedBatch = transformBatch([ordinary.value, ordinary.value], { stops: [{ position: 0, color: '#FFFFFF' }] });
   assert.equal(failedBatch.items.length, 2);
   assert.equal(failedBatch.diagnostics.length, 2);
+  const missingConfig = applyGradient(ordinary.value);
+  assert.equal(missingConfig.ok, false);
+  assert.equal(missingConfig.diagnostics[0].code, 'gradient_config_invalid');
 });
 
 test('DanDanPlay output keeps p+m semantics and enhanced data is optional', () => {
-  const item = applyGradient(base().value, { preset: 'pink-blue' }).value;
+  const item = applyGradient(base().value, customGradient).value;
   const legacy = toDanDanPlay(item);
   assert.equal(legacy.p, '1,1,16777215,[test]');
   assert.equal(legacy.m, 'hello');
@@ -120,7 +131,7 @@ test('unknown and broken effects do not invalidate Base', () => {
 });
 
 test('aggregate deduplicates by stable identity and native wins over generated', () => {
-  const generated = applyGradient(base().value, { preset: 'pink-blue' }).value;
+  const generated = applyGradient(base().value, customGradient).value;
   const native = base({ effects: [{ type: 'gradient', origin: 'native', target: 'fill', source: { type: 'texture', uri: 'https://cdn.example.test/native.png' } }] }).value;
   assert.equal(stableIdentity(generated), 'test:source-1:1');
   const merged = aggregate([generated, native]);

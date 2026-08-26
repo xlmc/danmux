@@ -1,6 +1,6 @@
 {
   "name": "danmux-v1",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "DanmuX v1 data model and Gradient Extension reference implementation",
   "type": "module",
   "engines": {
