@@ -6,13 +6,16 @@
   "additionalProperties": false,
   "required": ["p", "m"],
   "properties": {
-    "p": { "type": "string", "description": "time,mode,fontSize,color; field order and units are stable" },
+    "p": { "type": "string", "minLength": 5, "description": "Supported profiles: ddplay-json=time,mode,color,source; bilibili-xml=time,mode,fontSize,color,timestamp,pool,userHash,id[,weight]" },
     "m": { "type": "string" },
+    "id": { "type": ["string", "number"] },
+    "cid": { "type": ["string", "number"] },
+    "like": { "type": "number" },
     "danmux": {
       "type": "object", "additionalProperties": false, "required": ["extensionVersion"],
       "properties": {
         "extensionVersion": { "const": 1 },
-        "effects": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+        "effects": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "danmux-v1.schema.json#/$defs/effect" } },
         "lossReport": { "type": "array", "items": { "type": "object" } }
       }
     }

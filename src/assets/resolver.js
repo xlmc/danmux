@@ -1,19 +1,29 @@
 import { sha256 } from '../utils.js';
+import { lookup } from 'node:dns/promises';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+
+function isPrivateAddress(address) {
+  const host = address.toLowerCase().replace(/^\[|\]$/gu, '');
+  if (host === '::1' || host === '::' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true;
+  if (host.startsWith('::ffff:')) return isPrivateAddress(host.slice(7));
+  if (host.includes(':')) return false;
+  const octets = host.split('.').map(Number);
+  if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  return octets[0] === 0 || octets[0] === 10 || octets[0] === 127 || (octets[0] === 100 && octets[1] >= 64 && octets[1] <= 127) || (octets[0] === 169 && octets[1] === 254) || (octets[0] === 192 && octets[1] === 168) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31);
+}
 
 function isPrivateHostname(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/gu, '');
   if (host === 'localhost' || host.endsWith('.localhost') || host === 'metadata.google.internal') return true;
-  if (host.includes(':')) return true;
-  const octets = host.split('.').map(Number);
-  if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
-  return octets[0] === 10 || octets[0] === 127 || (octets[0] === 169 && octets[1] === 254) || (octets[0] === 192 && octets[1] === 168) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31);
+  return isPrivateAddress(host);
 }
 
 export class AssetResolver {
-  constructor({ fetchImpl = globalThis.fetch, maxBytes = 2 * 1024 * 1024, maxPixels = 16 * 1024 * 1024, timeoutMs = 5000, cache = new Map() } = {}) {
+  constructor({ fetchImpl = globalThis.fetch, resolveHostname = (hostname) => lookup(hostname, { all: true, verbatim: true }), allowedHosts, maxBytes = 2 * 1024 * 1024, maxPixels = 16 * 1024 * 1024, timeoutMs = 5000, cache = new Map() } = {}) {
     this.fetchImpl = fetchImpl;
+    this.resolveHostname = resolveHostname;
+    this.allowedHosts = allowedHosts ? new Set(allowedHosts.map((host) => String(host).toLowerCase())) : null;
     this.maxBytes = maxBytes;
     this.maxPixels = maxPixels;
     this.timeoutMs = timeoutMs;
@@ -25,7 +35,15 @@ export class AssetResolver {
     let url;
     try { url = new URL(asset.uri); } catch { return { ok: false, code: 'asset_uri_invalid' }; }
     if (url.protocol !== 'https:') return { ok: false, code: 'asset_scheme_blocked' };
+    if (this.allowedHosts && !this.allowedHosts.has(url.hostname.toLowerCase())) return { ok: false, code: 'asset_host_not_allowed' };
     if (isPrivateHostname(url.hostname)) return { ok: false, code: 'asset_private_host_blocked' };
+    try {
+      const addresses = await this.resolveHostname(url.hostname);
+      if (!Array.isArray(addresses) || addresses.length === 0) return { ok: false, code: 'asset_dns_empty' };
+      if (addresses.some((entry) => isPrivateAddress(typeof entry === 'string' ? entry : entry.address))) return { ok: false, code: 'asset_private_address_blocked' };
+    } catch {
+      return { ok: false, code: 'asset_dns_failed' };
+    }
     const cacheKey = `${asset.sha256 ?? ''}:${url.href}`;
     if (this.cache.has(cacheKey)) return { ok: true, ...this.cache.get(cacheKey), cached: true };
     const controller = new AbortController();
@@ -38,8 +56,11 @@ export class AssetResolver {
       if (!IMAGE_TYPES.has(mime)) return { ok: false, code: 'asset_mime_blocked', mime };
       const declared = Number(response.headers.get('content-length'));
       if (Number.isFinite(declared) && declared > this.maxBytes) return { ok: false, code: 'asset_size_exceeded' };
-      const buffer = Buffer.from(await response.arrayBuffer());
-      if (buffer.byteLength > this.maxBytes) return { ok: false, code: 'asset_size_exceeded' };
+      const buffer = await readBodyWithLimit(response, this.maxBytes);
+      if (!buffer) {
+        controller.abort();
+        return { ok: false, code: 'asset_size_exceeded' };
+      }
       const dimensions = readImageDimensions(buffer, mime);
       if (!dimensions) return { ok: false, code: 'asset_dimensions_invalid' };
       if (dimensions.width * dimensions.height > this.maxPixels) return { ok: false, code: 'asset_pixels_exceeded' };
@@ -53,6 +74,28 @@ export class AssetResolver {
     } finally {
       clearTimeout(timer);
     }
+  }
+}
+
+async function readBodyWithLimit(response, maxBytes) {
+  if (!response.body?.getReader) return null;
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel('asset size exceeded');
+        return null;
+      }
+      chunks.push(Buffer.from(value));
+    }
+    return Buffer.concat(chunks, total);
+  } finally {
+    reader.releaseLock();
   }
 }
 

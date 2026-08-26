@@ -13,9 +13,12 @@ function requiredString(value, path, max) {
 export function validateBase(input) {
   const errors = [];
   if (!isPlainObject(input)) return fail([diagnostic('base_type', 'DanmuX item must be an object')]);
+  if (input.schemaVersion !== SCHEMA_VERSION) errors.push(diagnostic('schema_version_invalid', `schemaVersion must be ${SCHEMA_VERSION}`, 'schemaVersion'));
+  const allowedRoot = new Set(['schemaVersion', 'id', 'time', 'text', 'mode', 'fontSize', 'color', 'source', 'effects', 'vendor']);
+  for (const key of Object.keys(input)) if (!allowedRoot.has(key)) errors.push(diagnostic('additional_property', `unregistered field ${key}`, key));
   errors.push(...requiredString(input.id, 'id', MAX_ID_LENGTH));
   if (!isFiniteNumber(input.time) || input.time < 0) errors.push(diagnostic('time_invalid', 'time must be a finite non-negative number of seconds', 'time'));
-  if (typeof input.text !== 'string' || input.text.length > MAX_TEXT_LENGTH || hasDisallowedControlCharacters(input.text)) {
+  if (typeof input.text !== 'string' || [...input.text].length > MAX_TEXT_LENGTH || hasDisallowedControlCharacters(input.text)) {
     errors.push(diagnostic('text_invalid', `text must be UTF-8 text up to ${MAX_TEXT_LENGTH} characters without control characters`, 'text'));
   }
   if (!MODES.includes(input.mode)) errors.push(diagnostic('mode_invalid', `mode must be one of ${MODES.join(', ')}`, 'mode'));
@@ -24,6 +27,7 @@ export function validateBase(input) {
   if (!isPlainObject(input.source)) {
     errors.push(diagnostic('source_required', 'source is required', 'source'));
   } else {
+    for (const key of Object.keys(input.source)) if (!['platform', 'id'].includes(key)) errors.push(diagnostic('additional_property', `unregistered source field ${key}`, `source.${key}`));
     errors.push(...requiredString(input.source.platform, 'source.platform', MAX_PLATFORM_LENGTH));
     errors.push(...requiredString(input.source.id, 'source.id', MAX_ID_LENGTH));
   }

@@ -1,12 +1,13 @@
 import { diagnostic, fail, ok } from '../diagnostics.js';
-import { MAX_EFFECTS } from '../constants.js';
-import { isFiniteNumber, isPlainObject } from '../utils.js';
+import { MAX_EFFECTS, MAX_VENDOR_DATA_BYTES } from '../constants.js';
+import { byteLength, isFiniteNumber, isPlainObject } from '../utils.js';
 
 const TARGETS = new Set(['fill', 'stroke']);
 const SOURCE_TYPES = new Set(['texture', 'linear']);
 
 function validateTexture(source, path) {
   const errors = [];
+  for (const key of Object.keys(source)) if (!['type', 'uri', 'assetId', 'sha256', 'mime'].includes(key)) errors.push(diagnostic('additional_property', `unregistered texture field ${key}`, `${path}.${key}`));
   if (typeof source.uri !== 'string' || !source.uri.trim()) {
     errors.push(diagnostic('texture_uri_required', 'texture.uri must be a non-empty string', `${path}.uri`));
   } else {
@@ -32,6 +33,7 @@ function validateTexture(source, path) {
 
 function validateLinear(source, path) {
   const errors = [];
+  for (const key of Object.keys(source)) if (!['type', 'angle', 'stops'].includes(key)) errors.push(diagnostic('additional_property', `unregistered linear field ${key}`, `${path}.${key}`));
   if (!isFiniteNumber(source.angle) || source.angle < -360 || source.angle > 360) {
     errors.push(diagnostic('gradient_angle_invalid', 'angle must be finite and between -360 and 360 degrees', `${path}.angle`));
   }
@@ -45,6 +47,7 @@ function validateLinear(source, path) {
       errors.push(diagnostic('gradient_stop_invalid', 'stop must be an object', stopPath));
       return;
     }
+    for (const key of Object.keys(stop)) if (!['position', 'color', 'alpha'].includes(key)) errors.push(diagnostic('additional_property', `unregistered stop field ${key}`, `${stopPath}.${key}`));
     if (typeof stop.position !== 'number' || !Number.isFinite(stop.position) || stop.position < 0 || stop.position > 1) {
       errors.push(diagnostic('gradient_stop_position', 'position must be finite and within 0..1', `${stopPath}.position`));
     }
@@ -63,6 +66,7 @@ export function validateGradientEffect(effect, path = 'effects[0]') {
   if (!isPlainObject(effect) || effect.type !== 'gradient') {
     return fail([diagnostic('gradient_type', 'effect.type must be gradient', `${path}.type`)]);
   }
+  for (const key of Object.keys(effect)) if (!['type', 'target', 'origin', 'source'].includes(key)) errors.push(diagnostic('additional_property', `unregistered gradient field ${key}`, `${path}.${key}`));
   if (!TARGETS.has(effect.target)) errors.push(diagnostic('gradient_target', 'target must be fill or stroke', `${path}.target`));
   if (!isPlainObject(effect.source) || !SOURCE_TYPES.has(effect.source?.type)) {
     errors.push(diagnostic('gradient_source_type', 'source.type must be texture or linear', `${path}.source.type`));
@@ -104,8 +108,14 @@ export function validateEffects(effects) {
         gradientTargets.add(effect.target);
       }
     } else if (effect?.type === 'vendor') {
-      if (!isPlainObject(effect) || typeof effect.vendor !== 'string' || typeof effect.name !== 'string' || effect.vendor.length > 64 || effect.name.length > 128) {
+      if (!isPlainObject(effect) || typeof effect.vendor !== 'string' || typeof effect.name !== 'string' || effect.vendor.length < 1 || effect.name.length < 1 || effect.vendor.length > 64 || effect.name.length > 128 || !Object.hasOwn(effect, 'data')) {
         errors.push(diagnostic('vendor_effect_invalid', 'vendor effect requires bounded vendor and name strings', `effects[${index}]`));
+      }
+      for (const key of Object.keys(effect ?? {})) if (!['type', 'vendor', 'name', 'data'].includes(key)) errors.push(diagnostic('additional_property', `unregistered vendor field ${key}`, `effects[${index}].${key}`));
+      try {
+        if (Object.hasOwn(effect ?? {}, 'data') && byteLength(effect.data) > MAX_VENDOR_DATA_BYTES) errors.push(diagnostic('vendor_data_too_large', `vendor data exceeds ${MAX_VENDOR_DATA_BYTES} bytes`, `effects[${index}].data`));
+      } catch {
+        errors.push(diagnostic('vendor_data_invalid', 'vendor data must be JSON serializable', `effects[${index}].data`));
       }
     } else {
       errors.push(diagnostic('unknown_effect_type', 'writers may only emit registered effect types', `effects[${index}].type`));

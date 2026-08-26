@@ -1,19 +1,31 @@
 {
   "name": "danmux-v1",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DanmuX v1 data model and Gradient Extension reference implementation",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test",
-    "test:watch": "node --test --watch",
-    "check": "node --check src/index.js && node --test"
+    "test": "node --test test/*.test.js",
+    "test:watch": "node --test --watch test/*.test.js",
+    "check": "node --check src/index.js && node --test test/*.test.js"
   },
   "license": "MIT",
+  "types": "./types/danmux.d.ts",
+  "files": [
+    "src/",
+    "schema/",
+    "types/",
+    "fixtures/",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
-    ".": "./src/index.js",
+    ".": {
+      "types": "./types/danmux.d.ts",
+      "import": "./src/index.js"
+    },
     "./schema/danmux-v1.schema.json": "./schema/danmux-v1.schema.json",
     "./schema/compatibility-wire-v1.schema.json": "./schema/compatibility-wire-v1.schema.json",
     "./types/danmux.d.ts": "./types/danmux.d.ts"
