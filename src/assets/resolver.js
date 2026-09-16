@@ -1,20 +1,28 @@
 import { sha256 } from '../utils.js';
 import { lookup } from 'node:dns/promises';
+import { BlockList, isIP } from 'node:net';
 
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 
+// Use address parsing rather than textual prefixes: IPv6 has equivalent spellings
+// and IPv4-mapped addresses must obey the same rules as native IPv4 addresses.
+const blockedAddresses = new BlockList();
+for (const [network, prefix] of [
+  ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8],
+  ['169.254.0.0', 16], ['172.16.0.0', 12], ['192.168.0.0', 16],
+  ['224.0.0.0', 4], ['240.0.0.0', 4],
+]) blockedAddresses.addSubnet(network, prefix, 'ipv4');
+for (const [network, prefix] of [
+  ['::', 96], ['::1', 128], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8],
+]) blockedAddresses.addSubnet(network, prefix, 'ipv6');
+
 function isPrivateAddress(address) {
-  const host = address.toLowerCase().replace(/^\[|\]$/gu, '');
-  if (host === '::1' || host === '::' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true;
-  if (host.startsWith('::ffff:')) return isPrivateAddress(host.slice(7));
-  if (host.includes(':')) return false;
-  const octets = host.split('.').map(Number);
-  if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
-  return octets[0] === 0 || octets[0] === 10 || octets[0] === 127 || (octets[0] === 100 && octets[1] >= 64 && octets[1] <= 127) || (octets[0] === 169 && octets[1] === 254) || (octets[0] === 192 && octets[1] === 168) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31);
+  const family = isIP(address);
+  return family !== 0 && blockedAddresses.check(address, family === 4 ? 'ipv4' : 'ipv6');
 }
 
 function isPrivateHostname(hostname) {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/gu, '');
+  const host = hostname.toLowerCase().replace(/^\[|\]$/gu, '').replace(/\.$/u, '');
   if (host === 'localhost' || host.endsWith('.localhost') || host === 'metadata.google.internal') return true;
   return isPrivateAddress(host);
 }
@@ -38,9 +46,12 @@ export class AssetResolver {
     if (this.allowedHosts && !this.allowedHosts.has(url.hostname.toLowerCase())) return { ok: false, code: 'asset_host_not_allowed' };
     if (isPrivateHostname(url.hostname)) return { ok: false, code: 'asset_private_host_blocked' };
     try {
-      const addresses = await this.resolveHostname(url.hostname);
+      const host = url.hostname.replace(/^\[|\]$/gu, '');
+      const addresses = isIP(host) ? [host] : await this.resolveHostname(host);
       if (!Array.isArray(addresses) || addresses.length === 0) return { ok: false, code: 'asset_dns_empty' };
-      if (addresses.some((entry) => isPrivateAddress(typeof entry === 'string' ? entry : entry.address))) return { ok: false, code: 'asset_private_address_blocked' };
+      const ips = addresses.map((entry) => typeof entry === 'string' ? entry : entry?.address);
+      if (ips.some((address) => typeof address !== 'string' || isIP(address) === 0)) return { ok: false, code: 'asset_dns_invalid' };
+      if (ips.some(isPrivateAddress)) return { ok: false, code: 'asset_private_address_blocked' };
     } catch {
       return { ok: false, code: 'asset_dns_failed' };
     }
@@ -62,7 +73,7 @@ export class AssetResolver {
         return { ok: false, code: 'asset_size_exceeded' };
       }
       const dimensions = readImageDimensions(buffer, mime);
-      if (!dimensions) return { ok: false, code: 'asset_dimensions_invalid' };
+      if (!dimensions || dimensions.width === 0 || dimensions.height === 0) return { ok: false, code: 'asset_dimensions_invalid' };
       if (dimensions.width * dimensions.height > this.maxPixels) return { ok: false, code: 'asset_pixels_exceeded' };
       const digest = sha256(buffer);
       if (asset.sha256 && asset.sha256 !== digest) return { ok: false, code: 'asset_hash_mismatch' };

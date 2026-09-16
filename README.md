@@ -1,20 +1,29 @@
 # DanmuX v1
 
+[English](README.en.md) · [贡献指南](CONTRIBUTING.md) · [路线图](ROADMAP.md) · [安全策略](SECURITY.md) · [变更记录](CHANGELOG.md)
+
+[![CI](https://github.com/xlmc/danmux/actions/workflows/test.yml/badge.svg)](https://github.com/xlmc/danmux/actions/workflows/test.yml)
+
 DanmuX 是一个平台无关的弹幕数据标准参考实现，当前仓库定义并实现标准 v1。它把平台原始弹幕归一化为 `Base + Effects + Source`，并将 DanDanPlay 保留为兼容输出，而不是内部核心模型。
 
-当前实现覆盖审批修订版任务书要求的标准骨架：双层版本、Base 校验、`gradient`（`texture` / `linear`）、B 站原生渐变适配、普通弹幕人工渐变、DanDanPlay fallback、Enhanced Extension、未知效果隔离、聚合幂等、Asset Resolver 安全边界、能力协商、结构化诊断和测试。v0.2 起吸收 `xlmc/danmu_api` 实际链路经验，兼容其四字段 JSON 与 Bilibili 8/9 字段 XML，并直接接受 protobuf parser 的 `progress/mode/fontsize/color_v2` 字段。
+当前实现包含双层版本、Base 校验、`gradient`（`texture` / `linear`）、B 站原生渐变适配、普通弹幕人工渐变、DanDanPlay fallback、Enhanced Extension、未知效果隔离、聚合幂等、Asset Resolver 安全边界、能力协商、结构化诊断和测试。v0.2 起吸收 [`xlmc/danmu_api`](https://github.com/xlmc/danmu_api) 的接口经验，兼容四字段 JSON 与 Bilibili 8/9 字段 XML，并直接接受 protobuf parser 的 `progress/mode/fontsize/color_v2` 字段。项目仍处于早期参考实现阶段；格式兼容不代表已被下游部署或广泛采用。
 
 播放器接入、具体渲染技术、BAS/mode 8/mode 9、动态渐变和其他平台原生高级特效不在 v1 范围内。
 
 ## 快速开始
 
-要求 Node.js 18+，项目无运行时依赖：
+要求 Node.js 18+，项目无运行时依赖。建议实际部署使用仍受 Node.js 官方支持的版本；18/20 保留为兼容性测试目标。从源码运行：
 
 ```bash
-npm test
+git clone https://github.com/xlmc/danmux.git
+cd danmux
 npm run check
+npm run example
+npm run check:package
 npm run demo
 ```
+
+以上命令不需要 API 密钥，也不需要安装依赖。`check:package` 会在临时目录验证打包后的安装与导出，不会发布 npm 包。其他项目可用 `npm install github:xlmc/danmux#v0.3.1` 安装已标记版本；GitHub 发布记录见 [Releases](https://github.com/xlmc/danmux/releases)。
 
 运行 `npm run demo` 后打开 `http://127.0.0.1:4173`，可以编辑原始 Bilibili JSON 和自定义渐变 stops，直观看到弹幕效果、DanmuX 模型、兼容 `p/m` 和诊断结果。调试台直接加载仓库当前源码，不包含任何内置预设。
 
@@ -72,7 +81,7 @@ const wire = toCompatibilityWire(enhanced);
 }
 ```
 
-普通弹幕不输出 `effects`。`Base.color` 始终是降级基准；不支持 Enhanced 的客户端只读取 `p+m`，仍显示单色弹幕。
+普通弹幕不输出 `effects`。`Base.color` 始终是降级基准；不支持 Enhanced 的客户端只读取 `p+m`，仍显示单色弹幕。读取器仅解释 `extensionVersion=1` 的增强层；缺失或未知版本会生成诊断并保留 Base。
 
 兼容线格式为：
 
@@ -143,7 +152,9 @@ test/                              单元、转换、安全和回归测试
 
 ## Conformance 状态
 
-本仓库是可运行的内部参考实现/原型，包含 T1–T22 的主要代码骨架和负向测试，但没有宣称替代真实平台采集器、播放器或生产级图片解码器。完成实际项目接入前，应把真实 Bilibili protobuf fixture、下游客户端矩阵、属性/模糊测试、真实缓存链路以及 feature flag/canary/shadow 发布流程接入 CI。
+本仓库是可运行的早期参考实现，包含适配、降级、资源安全和版本隔离测试，不替代真实平台采集器、播放器或生产级图片解码器。CI 在 Linux / Windows 与 Node.js 18、20、22、24 上验证测试、示例和打包安装。实际通过状态以 [Actions](https://github.com/xlmc/danmux/actions) 为准。
+
+下一步是带来源说明的匿名 fixture、下游客户端矩阵、属性/模糊测试与真实项目接入，验收条件见 [ROADMAP.md](ROADMAP.md)。当前示例数据不能作为真实部署或用户规模的证据。
 
 ## License
 
