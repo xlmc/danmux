@@ -28,6 +28,19 @@ Its format work draws on interfaces used by the maintainer's related
 [`danmu_api`](https://github.com/xlmc/danmu_api) project. Downstream adoption remains
 to be demonstrated; see the [integration milestones](ROADMAP.md).
 
+## Film, television and streaming vision
+
+DanmuX aims to provide a reusable timed-comment interoperability layer for film/TV
+playback, streaming and watch-party experiences. Its design brings together a
+platform-neutral model, source identity, optional visual effects and backward
+compatibility, so services and players can reuse adapters and preserve readable
+comments when richer effects are unavailable.
+
+Broad use in these products is an ambition to validate through real integrations,
+user feedback and compatibility results. The project does not claim industry-wide
+deployment or proven global uniqueness. See the [industry vision](docs/INDUSTRY_VISION.md)
+for the intended use cases and evidence needed.
+
 ## Run from source
 
 Node.js 18+ is required. Prefer an actively supported Node.js release for deployment;
