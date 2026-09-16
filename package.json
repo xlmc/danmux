@@ -1,18 +1,24 @@
 {
   "name": "danmux",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DanmuX v1 data model and Gradient Extension reference implementation",
   "type": "module",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test test/*.test.js",
-    "test:watch": "node --test --watch test/*.test.js",
-    "check": "node --check src/index.js && node --test test/*.test.js",
+    "test": "node --test",
+    "test:watch": "node --test --watch",
+    "check": "node --check src/index.js && node --test",
+    "check:package": "node scripts/check-package.js",
+    "example": "node examples/quickstart.js",
     "demo": "node demo/server.js"
   },
   "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/xlmc/danmux.git" },
+  "homepage": "https://github.com/xlmc/danmux#readme",
+  "bugs": { "url": "https://github.com/xlmc/danmux/issues" },
+  "keywords": ["danmaku", "danmu", "bilibili", "dandanplay", "interoperability", "gradient"],
   "types": "./types/danmux.d.ts",
   "files": [
     "src/",
@@ -20,6 +26,12 @@
     "types/",
     "fixtures/",
     "README.md",
+    "README.en.md",
+    "CONTRIBUTING.md",
+    "ROADMAP.md",
+    "SECURITY.md",
+    "CHANGELOG.md",
+    "examples/",
     "LICENSE"
   ],
   "exports": {

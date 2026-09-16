@@ -107,7 +107,11 @@ export function fromCompatibilityWire(wire, source) {
   const resolvedSource = sourceFromWire(wire, parsed, source);
   const effects = [];
   const targets = new Set();
-  for (const effect of Array.isArray(wire.danmux?.effects) ? wire.danmux.effects : []) {
+  const supportedExtension = wire.danmux?.extensionVersion === EXTENSION_VERSION;
+  if (wire.danmux !== undefined && !supportedExtension) {
+    diagnostics.push({ code: 'extension_version_unsupported', version: wire.danmux?.extensionVersion, fallback: 'base' });
+  }
+  for (const effect of supportedExtension && Array.isArray(wire.danmux.effects) ? wire.danmux.effects : []) {
     if (effect?.type !== 'gradient') {
       diagnostics.push({ code: 'effect_drop', reason: 'unsupported_effect_type', type: effect?.type });
       continue;

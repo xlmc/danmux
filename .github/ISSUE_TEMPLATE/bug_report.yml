@@ -1,0 +1,28 @@
+name: Bug or compatibility report / 问题反馈
+description: Report a reproducible conversion or compatibility problem.
+body:
+  - type: markdown
+    attributes:
+      value: "Remove private data. For vulnerabilities, use the private channel in SECURITY.md. English and Chinese are welcome."
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Package version or commit, Node.js version and operating system.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Smallest runnable example and sanitized input. Identify synthetic or authorized source data.
+      render: javascript
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Include diagnostics and how a downstream consumer is affected.
+    validations:
+      required: true
