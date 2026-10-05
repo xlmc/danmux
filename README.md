@@ -165,3 +165,7 @@ test/                              单元、转换、安全和回归测试
 ## License
 
 MIT
+
+## 浏览器最小接入
+
+便携入口、CSS 渐变助手与安全边界见 [客户端接入说明](docs/CLIENT_INTEGRATION.md)。

@@ -1,3 +1,5 @@
+import { gradientToCss } from '/src/core.js';
+
 const rawInput = document.getElementById('rawInput');
 const angleInput = document.getElementById('angleInput');
 const stopsInput = document.getElementById('stopsInput');
@@ -31,19 +33,22 @@ async function render() {
     if (!response.ok || !payload.item) throw new Error((payload.diagnostics ?? []).map((entry) => entry.message ?? entry.code).join('; ') || '原始数据无法转换');
     const item = payload.item;
     const diagnostics = payload.diagnostics ?? [];
-    const generated = item.effects?.find((effect) => effect.type === 'gradient' && effect.origin === 'generated');
-    const cssStops = generated?.source?.type === 'linear'
-      ? generated.source.stops.map((stop) => `${colorToCss(Number.parseInt(stop.color.slice(1), 16), stop.alpha)} ${stop.position * 100}%`).join(', ')
-      : colorToCss(item.color);
+    const fill = item.effects?.find((effect) => effect.type === 'gradient' && effect.target === 'fill');
+    const css = fill ? gradientToCss(fill) : undefined;
+    // Keep native textures in the model, but report the preview's actual limits.
+    if (css && !css.ok) diagnostics.push(...css.diagnostics);
+    if (item.effects?.some(effect => effect.type === 'gradient' && effect.target === 'stroke')) {
+      diagnostics.push({ code: 'demo_stroke_unsupported', message: '当前预览不渲染渐变描边，标准模型仍保留该效果' });
+    }
     danmakuText.textContent = item.text;
-    danmakuText.style.background = generated?.source?.type === 'linear' ? `linear-gradient(${generated.source.angle}deg, ${cssStops})` : cssStops;
+    danmakuText.style.background = css?.ok ? css.value : colorToCss(item.color);
     danmakuText.style.webkitBackgroundClip = 'text';
     danmakuText.style.backgroundClip = 'text';
     danmakuText.style.color = 'transparent';
     meta.innerHTML = `<span>time: ${item.time}s</span><span>mode: ${escapeText(item.mode)}</span><span>fontSize: ${item.fontSize}</span><span>base color: ${colorToCss(item.color)}</span><span>effects: ${item.effects?.length ?? 0}</span>`;
     modelOutput.textContent = JSON.stringify(item, null, 2);
-    wireOutput.textContent = JSON.stringify({ p: payload.wire.p, m: payload.wire.m, diagnostics }, null, 2);
-    status.textContent = diagnostics.length ? `转换完成，${diagnostics.length} 条诊断` : '转换成功，无诊断';
+    wireOutput.textContent = JSON.stringify({ ...payload.wire, diagnostics }, null, 2);
+    status.textContent = diagnostics.length ? `转换完成，${diagnostics.length} 条诊断：${diagnostics.map(entry => entry.message ?? entry.code).join('；')}` : '转换成功，无诊断';
     if (diagnostics.length) status.className = 'status error';
   } catch (error) {
     status.className = 'status error';

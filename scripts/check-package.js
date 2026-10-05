@@ -15,7 +15,7 @@ const npm = (args, cwd = root) => execFileSync(process.execPath, [npmCli, ...arg
 });
 try {
   const [packed] = JSON.parse(npm(['pack', '--json', '--ignore-scripts', '--pack-destination', temp]));
-  for (const file of ['src/index.js', 'types/danmux.d.ts', 'schema/danmux-v1.schema.json', 'README.en.md', 'LICENSE']) {
+  for (const file of ['src/index.js', 'src/core.js', 'src/renderers/css.js', 'types/danmux.d.ts', 'types/core.d.ts', 'types/assets.d.ts', 'schema/danmux-v1.schema.json', 'README.en.md', 'LICENSE']) {
     assert.ok(packed.files.some(entry => entry.path === file), `Missing package file: ${file}`);
   }
   const consumer = join(temp, 'consumer');
@@ -27,6 +27,10 @@ try {
     import { createRequire } from 'node:module';
     import { readFileSync } from 'node:fs';
     import { fromBilibili, toCompatibilityWire } from 'danmux';
+    import { gradientToCss } from 'danmux/core';
+    import { AssetResolver } from 'danmux/assets';
+    assert.equal(typeof gradientToCss, 'function');
+    assert.equal(typeof AssetResolver, 'function');
     const item = fromBilibili({ id: 'packed', progress: 1500, content: 'packed import', color: 0xffffff });
     assert.equal(item.ok, true);
     assert.equal(toCompatibilityWire(item.value).p, '1.5,1,16777215,[bilibili]');
@@ -36,6 +40,13 @@ try {
     assert.ok(readFileSync(require.resolve('danmux/types/danmux.d.ts'), 'utf8').includes('interface DanmuX'));
   `);
   execFileSync(process.execPath, ['smoke.mjs'], { cwd: consumer, stdio: 'inherit' });
+  writeFileSync(join(consumer, 'browser-smoke.mjs'), `
+    import assert from 'node:assert/strict';
+    import * as api from 'danmux';
+    assert.equal(api.AssetResolver, undefined);
+    assert.equal(typeof api.gradientToCss, 'function');
+  `);
+  execFileSync(process.execPath, ['--conditions=browser', 'browser-smoke.mjs'], { cwd: consumer, stdio: 'inherit' });
   console.log(`Package verified: ${packed.filename} (${packed.files.length} files); install, ESM import, schema and declaration exports passed.`);
 } finally {
   const resolvedTemp = realpathSync(temp);

@@ -37,6 +37,7 @@ export function transformBatch(items: DanmuX[], config?: GradientConfig): { item
 export function aggregate(items: DanmuX[]): { items: DanmuX[]; lossReport: Diagnostic[] };
 export function negotiateCapabilities(requested?: Record<string, string[]>): Record<string, unknown>;
 export function createMetrics(): { increment(name: string, amount?: number): void; snapshot(): Record<string, number>; };
+export function gradientToCss(effect: unknown): Result<string>;
 
 export class AssetResolver {
   constructor(options?: Record<string, unknown>);

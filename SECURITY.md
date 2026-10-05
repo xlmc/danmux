@@ -31,13 +31,15 @@ These checks are not a complete network sandbox or image decoder:
 - DNS is checked before fetching, but the actual connection is not pinned to the
   checked address. Use a trusted host allowlist and controlled outbound proxy to
   address DNS rebinding and deployment-specific routing.
-- `timeoutMs` covers fetching and body reading, not the injected DNS lookup.
-  Give custom resolvers their own DNS deadline.
+- `timeoutMs` bounds fetching and body reading; `dnsTimeoutMs` separately bounds
+  DNS waiting (defaults to `timeoutMs`). A timed-out injected lookup may continue
+  internally, but its result cannot trigger a fetch.
 - Image dimensions are read from selected headers, not a full decoder. In
   particular, WebP support covers the VP8X header. Validate/decode images in the
   consuming application before rendering them.
-- The default in-memory cache has no eviction policy. Long-lived services should
-  inject a bounded cache and define freshness and revalidation requirements.
+- The in-memory cache uses LRU eviction with `maxCacheEntries` (default 32;
+  zero disables caching). Deployments must still define freshness and revalidation
+  requirements. Injected caches must support Map-compatible ordering and methods.
 - Vendor data and diagnostics can contain source metadata. Redact them before
   logging or sharing reports.
 

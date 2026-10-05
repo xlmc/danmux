@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 export function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -13,11 +11,9 @@ export function deepClone(value) {
 }
 
 export function byteLength(value) {
-  return Buffer.byteLength(JSON.stringify(value), 'utf8');
-}
-
-export function sha256(value) {
-  return createHash('sha256').update(value).digest('hex');
+  const json = JSON.stringify(value);
+  if (typeof json !== 'string') throw new TypeError('value must be JSON serializable');
+  return new TextEncoder().encode(json).byteLength;
 }
 
 export function normalizeString(value) {

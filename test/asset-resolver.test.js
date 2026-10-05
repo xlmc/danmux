@@ -92,3 +92,35 @@ test('zero image dimensions and hash mismatches never enter the cache', async ()
     'asset_hash_mismatch');
   assert.equal(cache.size, 0);
 });
+
+test('DNS deadline bounds an unresponsive resolver without fetching or caching', async () => {
+  let fetchCalls = 0;
+  const resolver = new AssetResolver({ dnsTimeoutMs: 10,
+    resolveHostname: () => new Promise(() => {}),
+    fetchImpl: async () => { fetchCalls++; return response(); },
+  });
+  const result = await resolver.resolve({ uri: 'https://cdn.example.test/hung.png' });
+  assert.equal(result.code, 'asset_dns_timeout');
+  assert.equal(fetchCalls, 0);
+  assert.equal(resolver.cache.size, 0);
+});
+
+test('resource cache evicts least recently used entries and can be disabled', async () => {
+  let fetchCalls = 0;
+  const resolver = new AssetResolver({ maxCacheEntries: 2, resolveHostname: publicDns,
+    fetchImpl: async () => { fetchCalls++; return response(); },
+  });
+  const asset = name => ({ uri: `https://cdn.example.test/${name}.png` });
+  await resolver.resolve(asset('a'));
+  await resolver.resolve(asset('b'));
+  assert.equal((await resolver.resolve(asset('a'))).cached, true);
+  await resolver.resolve(asset('c'));
+  assert.equal(resolver.cache.size, 2);
+  assert.equal((await resolver.resolve(asset('a'))).cached, true);
+  assert.equal((await resolver.resolve(asset('b'))).cached, undefined);
+  assert.equal(fetchCalls, 4);
+  const uncached = new AssetResolver({ maxCacheEntries: 0, resolveHostname: publicDns, fetchImpl: response });
+  await uncached.resolve(asset('a'));
+  assert.equal((await uncached.resolve(asset('a'))).cached, undefined);
+  assert.equal(uncached.cache.size, 0);
+});

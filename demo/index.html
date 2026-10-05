@@ -76,7 +76,7 @@
 }</textarea>
       </label>
       <div class="controls">
-        <label>角度（度）
+        <label>角度（0° 向右，顺时针）
           <input id="angleInput" type="number" value="0" step="1" min="-360" max="360">
         </label>
         <label>渐变 stops（JSON）
@@ -92,6 +92,7 @@
 
     <section class="panel" aria-labelledby="previewTitle">
       <h2 id="previewTitle">直观预览</h2>
+      <p class="hint">预览支持线性文字填充；原生纹理和渐变描边会保留在模型中，并明确提示单色降级。</p>
       <div class="stage" role="img" aria-label="弹幕渐变预览">
         <span class="stage-caption">fill gradient preview</span>
         <div id="danmakuText">等待转换</div>
@@ -106,12 +107,12 @@
       <pre id="modelOutput">等待转换</pre>
     </div>
     <div class="output">
-      <h2>兼容 p / m 与诊断</h2>
+      <h2>兼容 p / m、增强扩展与诊断</h2>
       <pre id="wireOutput">等待转换</pre>
     </div>
   </section>
 </main>
 
-<script src="/demo/client.js" defer></script>
+<script src="/demo/client.js" type="module"></script>
 </body>
 </html>

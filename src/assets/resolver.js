@@ -1,4 +1,4 @@
-import { sha256 } from '../utils.js';
+import { createHash } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { BlockList, isIP } from 'node:net';
 
@@ -28,14 +28,18 @@ function isPrivateHostname(hostname) {
 }
 
 export class AssetResolver {
-  constructor({ fetchImpl = globalThis.fetch, resolveHostname = (hostname) => lookup(hostname, { all: true, verbatim: true }), allowedHosts, maxBytes = 2 * 1024 * 1024, maxPixels = 16 * 1024 * 1024, timeoutMs = 5000, cache = new Map() } = {}) {
+  constructor({ fetchImpl = globalThis.fetch, resolveHostname = (hostname) => lookup(hostname, { all: true, verbatim: true }), allowedHosts, maxBytes = 2 * 1024 * 1024, maxPixels = 16 * 1024 * 1024, timeoutMs = 5000, dnsTimeoutMs = timeoutMs, cache = new Map(), maxCacheEntries = 32 } = {}) {
+    if (!Number.isFinite(dnsTimeoutMs) || dnsTimeoutMs <= 0) throw new TypeError('dnsTimeoutMs must be positive');
+    if (!Number.isInteger(maxCacheEntries) || maxCacheEntries < 0) throw new TypeError('maxCacheEntries must be a non-negative integer');
     this.fetchImpl = fetchImpl;
     this.resolveHostname = resolveHostname;
     this.allowedHosts = allowedHosts ? new Set(allowedHosts.map((host) => String(host).toLowerCase())) : null;
     this.maxBytes = maxBytes;
     this.maxPixels = maxPixels;
     this.timeoutMs = timeoutMs;
+    this.dnsTimeoutMs = dnsTimeoutMs;
     this.cache = cache;
+    this.maxCacheEntries = maxCacheEntries;
   }
 
   async resolve(asset) {
@@ -45,18 +49,31 @@ export class AssetResolver {
     if (url.protocol !== 'https:') return { ok: false, code: 'asset_scheme_blocked' };
     if (this.allowedHosts && !this.allowedHosts.has(url.hostname.toLowerCase())) return { ok: false, code: 'asset_host_not_allowed' };
     if (isPrivateHostname(url.hostname)) return { ok: false, code: 'asset_private_host_blocked' };
+    let dnsTimer;
     try {
       const host = url.hostname.replace(/^\[|\]$/gu, '');
-      const addresses = isIP(host) ? [host] : await this.resolveHostname(host);
+      const addresses = isIP(host) ? [host] : await Promise.race([
+        this.resolveHostname(host),
+        new Promise((_, reject) => {
+          dnsTimer = setTimeout(() => reject(Object.assign(new Error('DNS deadline exceeded'), { code: 'DNS_TIMEOUT' })), this.dnsTimeoutMs);
+        }),
+      ]);
       if (!Array.isArray(addresses) || addresses.length === 0) return { ok: false, code: 'asset_dns_empty' };
       const ips = addresses.map((entry) => typeof entry === 'string' ? entry : entry?.address);
       if (ips.some((address) => typeof address !== 'string' || isIP(address) === 0)) return { ok: false, code: 'asset_dns_invalid' };
       if (ips.some(isPrivateAddress)) return { ok: false, code: 'asset_private_address_blocked' };
-    } catch {
-      return { ok: false, code: 'asset_dns_failed' };
+    } catch (error) {
+      return { ok: false, code: error?.code === 'DNS_TIMEOUT' ? 'asset_dns_timeout' : 'asset_dns_failed' };
+    } finally {
+      clearTimeout(dnsTimer);
     }
     const cacheKey = `${asset.sha256 ?? ''}:${url.href}`;
-    if (this.cache.has(cacheKey)) return { ok: true, ...this.cache.get(cacheKey), cached: true };
+    if (this.maxCacheEntries > 0 && this.cache.has(cacheKey)) {
+      const result = this.cache.get(cacheKey);
+      this.cache.delete(cacheKey);
+      this.cache.set(cacheKey, result);
+      return { ok: true, ...result, cached: true };
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -75,10 +92,13 @@ export class AssetResolver {
       const dimensions = readImageDimensions(buffer, mime);
       if (!dimensions || dimensions.width === 0 || dimensions.height === 0) return { ok: false, code: 'asset_dimensions_invalid' };
       if (dimensions.width * dimensions.height > this.maxPixels) return { ok: false, code: 'asset_pixels_exceeded' };
-      const digest = sha256(buffer);
+      const digest = createHash('sha256').update(buffer).digest('hex');
       if (asset.sha256 && asset.sha256 !== digest) return { ok: false, code: 'asset_hash_mismatch' };
       const result = { mime, bytes: buffer.byteLength, pixels: dimensions.width * dimensions.height, sha256: digest, data: buffer };
-      this.cache.set(cacheKey, result);
+      if (this.maxCacheEntries > 0) {
+        this.cache.set(cacheKey, result);
+        while (this.cache.size > this.maxCacheEntries) this.cache.delete(this.cache.keys().next().value);
+      }
       return { ok: true, ...result };
     } catch (error) {
       return { ok: false, code: error.name === 'AbortError' ? 'asset_timeout' : 'asset_fetch_failed' };

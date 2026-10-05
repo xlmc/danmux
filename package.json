@@ -37,8 +37,20 @@
   ],
   "exports": {
     ".": {
+      "browser": {
+        "types": "./types/core.d.ts",
+        "import": "./src/core.js"
+      },
       "types": "./types/danmux.d.ts",
       "import": "./src/index.js"
+    },
+    "./core": {
+      "types": "./types/core.d.ts",
+      "import": "./src/core.js"
+    },
+    "./assets": {
+      "types": "./types/assets.d.ts",
+      "import": "./src/assets/resolver.js"
     },
     "./schema/danmux-v1.schema.json": "./schema/danmux-v1.schema.json",
     "./schema/compatibility-wire-v1.schema.json": "./schema/compatibility-wire-v1.schema.json",
